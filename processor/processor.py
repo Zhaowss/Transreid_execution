@@ -153,6 +153,10 @@ def do_inference(cfg,
 
     model.eval()
     img_path_list = []
+    output_dir = "feature_out_put"  # 特征保存的目录
+
+    # 确保特征保存目录存在
+    os.makedirs(output_dir, exist_ok=True)
 
     for n_iter, (img, pid, camid, camids, target_view, imgpath) in enumerate(val_loader):
         with torch.no_grad():
@@ -160,14 +164,23 @@ def do_inference(cfg,
             camids = camids.to(device)
             target_view = target_view.to(device)
             feat = model(img)
-            evaluator.update((feat, pid, camid))
-            img_path_list.extend(imgpath)
+            for feature, path in zip(feat, imgpath):
+                # 生成特征保存路径
+                feat_name=os.path.basename(path).split(".")[0]
+                feature_path = os.path.join(output_dir, feat_name + ".pt")
+                # 保存特征
+                torch.save(feature.cpu(), feature_path)
+                print(f"Saved feature to {feature_path}")
 
-    cmc, mAP, _, _, _, _, _ = evaluator.compute()
-    logger.info("Validation Results ")
-    logger.info("mAP: {:.1%}".format(mAP))
-    for r in [1, 5, 10]:
-        logger.info("CMC curve, Rank-{:<3}:{:.1%}".format(r, cmc[r - 1]))
-    return cmc[0], cmc[4]
+
+    #         evaluator.update((feat, pid, camid))
+    #         img_path_list.extend(imgpath)
+    #
+    # cmc, mAP, _, _, _, _, _ = evaluator.compute()
+    # logger.info("Validation Results ")
+    # logger.info("mAP: {:.1%}".format(mAP))
+    # for r in [1, 5, 10]:
+    #     logger.info("CMC curve, Rank-{:<3}:{:.1%}".format(r, cmc[r - 1]))
+    # return cmc[0], cmc[4]
 
 
